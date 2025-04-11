@@ -76,7 +76,7 @@ const auditLogs = [
 ];
 
 // Action types with their corresponding badges
-const actionTypeBadge = {
+const actionTypeBadge: Record<string, { variant: "default" | "destructive" | "outline" | "secondary", label: string }> = {
   'user.create': { variant: 'default', label: 'User Create' },
   'user.update': { variant: 'default', label: 'User Update' },
   'user.delete': { variant: 'destructive', label: 'User Delete' },
@@ -91,7 +91,7 @@ const actionTypeBadge = {
 };
 
 // Status badge variants
-const statusBadgeVariant = {
+const statusBadgeVariant: Record<string, "default" | "destructive" | "outline" | "secondary"> = {
   'success': 'default',
   'failure': 'destructive',
   'warning': 'secondary'
@@ -215,9 +215,9 @@ const AuditLogs = () => {
                     <TableCell className="whitespace-nowrap">{formatDate(log.timestamp)}</TableCell>
                     <TableCell>{log.user}</TableCell>
                     <TableCell>
-                      {actionTypeBadge[log.action as keyof typeof actionTypeBadge] ? (
-                        <Badge variant={actionTypeBadge[log.action as keyof typeof actionTypeBadge].variant as any}>
-                          {actionTypeBadge[log.action as keyof typeof actionTypeBadge].label}
+                      {actionTypeBadge[log.action] ? (
+                        <Badge variant={actionTypeBadge[log.action].variant}>
+                          {actionTypeBadge[log.action].label}
                         </Badge>
                       ) : (
                         <Badge variant="outline">{log.action}</Badge>
@@ -227,7 +227,7 @@ const AuditLogs = () => {
                       {log.resource}
                     </TableCell>
                     <TableCell>
-                      <Badge variant={statusBadgeVariant[log.status as keyof typeof statusBadgeVariant]} className="capitalize">
+                      <Badge variant={statusBadgeVariant[log.status]} className="capitalize">
                         {log.status}
                       </Badge>
                     </TableCell>

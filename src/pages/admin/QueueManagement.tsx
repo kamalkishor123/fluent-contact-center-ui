@@ -159,8 +159,7 @@ const QueueManagement = () => {
                       <div className="flex items-center gap-2">
                         <Progress
                           value={queue.slaLevel}
-                          className="h-2"
-                          indicatorClassName={getSLAColor(queue.slaLevel)}
+                          className={`h-2 ${getSLAColor(queue.slaLevel)}`}
                         />
                         <span className="text-sm">{queue.slaLevel}%</span>
                       </div>

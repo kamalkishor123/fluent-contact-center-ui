@@ -61,8 +61,8 @@ const templates = [
   }
 ];
 
-// Status badge variants
-const statusBadgeVariant = {
+// Status badge variants with proper typing
+const statusBadgeVariant: Record<string, "default" | "destructive" | "outline" | "secondary"> = {
   'approved': 'default',
   'pending': 'secondary',
   'rejected': 'destructive'
@@ -194,7 +194,7 @@ const WhatsAppTemplates = () => {
                             ) : (
                               <div className="h-4 w-4 rounded-full bg-yellow-500" />
                             )}
-                            <Badge variant={statusBadgeVariant[template.status as keyof typeof statusBadgeVariant]} className="capitalize">
+                            <Badge variant={statusBadgeVariant[template.status]} className="capitalize">
                               {template.status}
                             </Badge>
                           </div>

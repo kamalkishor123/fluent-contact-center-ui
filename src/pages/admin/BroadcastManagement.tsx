@@ -70,15 +70,15 @@ const broadcasts = [
   }
 ];
 
-// Type badge variants
-const typeBadgeVariant = {
+// Type badge variants with proper typing
+const typeBadgeVariant: Record<string, "default" | "secondary" | "outline"> = {
   'voice': 'default',
   'sms': 'secondary',
   'email': 'outline'
 };
 
-// Status badge variants
-const statusBadgeVariant = {
+// Status badge variants with proper typing
+const statusBadgeVariant: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
   'scheduled': 'secondary',
   'active': 'default',
   'completed': 'outline',
@@ -210,12 +210,12 @@ const BroadcastManagement = () => {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <Badge variant={typeBadgeVariant[broadcast.type as keyof typeof typeBadgeVariant]} className="capitalize">
+                          <Badge variant={typeBadgeVariant[broadcast.type]} className="capitalize">
                             {broadcast.type}
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          <Badge variant={statusBadgeVariant[broadcast.status as keyof typeof statusBadgeVariant]} className="capitalize">
+                          <Badge variant={statusBadgeVariant[broadcast.status]} className="capitalize">
                             {broadcast.status}
                           </Badge>
                         </TableCell>

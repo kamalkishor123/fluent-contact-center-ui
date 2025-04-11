@@ -60,8 +60,8 @@ const acdRules = [
   }
 ];
 
-// Priority badge variants
-const priorityVariants = {
+// Priority badge variants with proper typing
+const priorityVariants: Record<string, "default" | "destructive" | "outline" | "secondary"> = {
   'Critical': 'destructive',
   'High': 'default',
   'Medium': 'secondary',
@@ -159,7 +159,7 @@ const ACDRules = () => {
                     <TableCell className="max-w-[200px] truncate" title={rule.condition}>{rule.condition}</TableCell>
                     <TableCell className="max-w-[200px] truncate" title={rule.actions}>{rule.actions}</TableCell>
                     <TableCell>
-                      <Badge variant={priorityVariants[rule.priority as keyof typeof priorityVariants]}>
+                      <Badge variant={priorityVariants[rule.priority]}>
                         {rule.priority}
                       </Badge>
                     </TableCell>
