@@ -1,3 +1,4 @@
+
 import type { Config } from "tailwindcss";
 
 export default {
@@ -61,6 +62,18 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
+				},
+				// Contact Center specific colors
+				cc: {
+					'agent-available': '#4ade80', // green-400
+					'agent-busy': '#f87171', // red-400
+					'agent-away': '#facc15', // yellow-400
+					'agent-offline': '#9ca3af', // gray-400
+					'primary': '#6366f1', // indigo-500
+					'primary-light': '#a5b4fc', // indigo-300
+					'secondary': '#8b5cf6', // violet-500
+					'accent': '#3b82f6', // blue-500
+					'dark': '#1e293b', // slate-800
 				}
 			},
 			borderRadius: {
@@ -84,11 +97,21 @@ export default {
 					to: {
 						height: '0'
 					}
+				},
+				'pulse-ring': {
+					'0%': { transform: 'scale(0.8)', opacity: '1' },
+					'100%': { transform: 'scale(2)', opacity: '0' }
+				},
+				'flash': {
+					'0%, 50%, 100%': { opacity: '1' },
+					'25%, 75%': { opacity: '0.5' }
 				}
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
-				'accordion-up': 'accordion-up 0.2s ease-out'
+				'accordion-up': 'accordion-up 0.2s ease-out',
+				'pulse-ring': 'pulse-ring 1.5s cubic-bezier(0.24, 0, 0.38, 1) infinite',
+				'flash': 'flash 2s infinite'
 			}
 		}
 	},
