@@ -12,18 +12,83 @@ import SupervisorDashboard from "./pages/supervisor/Dashboard";
 import CallRecordings from "./pages/supervisor/CallRecordings";
 import Reporting from "./pages/reporting/Reporting";
 import AdminDashboard from "./pages/admin/Dashboard";
-import UserManagement from "./pages/admin/UserManagement";
-import QueueManagement from "./pages/admin/QueueManagement";
-import ACDRules from "./pages/admin/ACDRules";
-import IVRBuilder from "./pages/admin/IVRBuilder";
-import DirectoryManagement from "./pages/admin/DirectoryManagement";
-import BroadcastManagement from "./pages/admin/BroadcastManagement";
-import WhatsAppTemplates from "./pages/admin/WhatsAppTemplates";
-import AuditLogs from "./pages/admin/AuditLogs";
-import SystemSettings from "./pages/admin/SystemSettings";
+import { PageLayout } from "./components/layout/PageLayout";
 import { AuthProvider } from "./context/AuthContext";
 
 const queryClient = new QueryClient();
+
+// Create placeholder components for admin pages that will be implemented later
+const UserManagement = () => (
+  <PageLayout title="User Management" allowedRoles={['admin']}>
+    <div className="space-y-4">
+      <p>User Management module will be implemented in future sprints.</p>
+    </div>
+  </PageLayout>
+);
+
+const QueueManagement = () => (
+  <PageLayout title="Queue Management" allowedRoles={['admin']}>
+    <div className="space-y-4">
+      <p>Queue Management module will be implemented in future sprints.</p>
+    </div>
+  </PageLayout>
+);
+
+const ACDRules = () => (
+  <PageLayout title="ACD Rules" allowedRoles={['admin']}>
+    <div className="space-y-4">
+      <p>ACD Rules module will be implemented in future sprints.</p>
+    </div>
+  </PageLayout>
+);
+
+const IVRBuilder = () => (
+  <PageLayout title="IVR Builder" allowedRoles={['admin']}>
+    <div className="space-y-4">
+      <p>IVR Builder module will be implemented in future sprints.</p>
+    </div>
+  </PageLayout>
+);
+
+const DirectoryManagement = () => (
+  <PageLayout title="Directory Management" allowedRoles={['admin']}>
+    <div className="space-y-4">
+      <p>Directory Management module will be implemented in future sprints.</p>
+    </div>
+  </PageLayout>
+);
+
+const BroadcastManagement = () => (
+  <PageLayout title="Broadcast Management" allowedRoles={['admin']}>
+    <div className="space-y-4">
+      <p>Broadcast Management module will be implemented in future sprints.</p>
+    </div>
+  </PageLayout>
+);
+
+const WhatsAppTemplates = () => (
+  <PageLayout title="WhatsApp Templates" allowedRoles={['admin']}>
+    <div className="space-y-4">
+      <p>WhatsApp Templates module will be implemented in future sprints.</p>
+    </div>
+  </PageLayout>
+);
+
+const AuditLogs = () => (
+  <PageLayout title="Audit Logs" allowedRoles={['admin']}>
+    <div className="space-y-4">
+      <p>Audit Logs module will be implemented in future sprints.</p>
+    </div>
+  </PageLayout>
+);
+
+const SystemSettings = () => (
+  <PageLayout title="System Settings" allowedRoles={['admin']}>
+    <div className="space-y-4">
+      <p>System Settings module will be implemented in future sprints.</p>
+    </div>
+  </PageLayout>
+);
 
 const App = () => (
   <QueryClientProvider client={queryClient}>

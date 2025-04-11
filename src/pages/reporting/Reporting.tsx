@@ -33,13 +33,14 @@ import AgentPerformanceReport from './AgentPerformanceReport';
 import QueuePerformanceReport from './QueuePerformanceReport';
 import CallVolumeReport from './CallVolumeReport';
 import SLAReport from './SLAReport';
+import { DateRange } from 'react-day-picker';
 
 const Reporting = () => {
   const { toast } = useToast();
   
   // State for report settings
   const [reportType, setReportType] = useState('agent-performance');
-  const [dateRange, setDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({
+  const [dateRange, setDateRange] = useState<DateRange>({
     from: new Date(),
     to: new Date(),
   });
@@ -361,6 +362,51 @@ const Reporting = () => {
       </Dialog>
     </PageLayout>
   );
+};
+
+// Add the missing handler functions
+const handleSaveReport = () => {
+  setShowSaveDialog(true);
+};
+
+const handlePrintReport = () => {
+  toast({
+    title: "Printing report",
+    description: "Preparing report for printing",
+  });
+  window.print();
+};
+
+const handleExportReport = (format: 'csv' | 'pdf' | 'excel') => {
+  toast({
+    title: `Exporting ${format.toUpperCase()}`,
+    description: `Your report is being prepared for download`,
+  });
+  
+  // Simulate download delay
+  setTimeout(() => {
+    toast({
+      title: "Export complete",
+      description: `Your ${format.toUpperCase()} report is ready for download`,
+    });
+  }, 1500);
+};
+
+const confirmSaveReport = () => {
+  toast({
+    title: "Report saved",
+    description: `"${reportName}" has been saved to your reports`,
+  });
+  setShowSaveDialog(false);
+  setReportName('');
+  setReportDescription('');
+};
+
+const handleGenerateReport = () => {
+  toast({
+    title: "Report generated",
+    description: "The report data has been refreshed",
+  });
 };
 
 export default Reporting;
