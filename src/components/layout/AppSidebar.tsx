@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -126,7 +125,6 @@ export function AppSidebar() {
     },
   ];
   
-  // Choose navigation based on user role
   const navItems = user?.role === 'agent' ? agentNavItems :
                   user?.role === 'supervisor' ? supervisorNavItems :
                   user?.role === 'admin' ? adminNavItems : [];
@@ -181,10 +179,28 @@ export function AppSidebar() {
       <SidebarFooter>
         <div className="px-4 py-2">
           {user && (
-            <div className="mb-4 text-sm">
-              <p className="font-semibold">{user.name}</p>
-              <p className="text-muted-foreground capitalize">{user.role}</p>
-              {user.agentId && <p className="text-xs text-muted-foreground">ID: {user.agentId}</p>}
+            <div className="mb-4 text-sm flex items-center gap-2">
+              <div className="flex-1">
+                <p className="font-semibold flex items-center gap-1">
+                  {user.name}
+                  <button
+                    aria-label="User Settings"
+                    className="ml-1 p-1 rounded-full hover:bg-muted transition"
+                    onClick={() => {
+                      console.log("Open user settings");
+                    }}
+                    title="User Settings"
+                  >
+                    <Settings className="h-4 w-4 text-muted-foreground hover:text-cc-primary" />
+                  </button>
+                </p>
+                <p className="text-muted-foreground capitalize">{user.role}</p>
+                {user.agentId && (
+                  <p className="text-xs text-muted-foreground">
+                    ID: {user.agentId}
+                  </p>
+                )}
+              </div>
             </div>
           )}
           <Button 
