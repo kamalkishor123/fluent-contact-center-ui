@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { PageLayout } from '@/components/layout/PageLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -31,11 +32,11 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Separator } from '@/components/ui/separator';
 import { 
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, 
-  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, 
-  ComposedChart, ReferenceLine
+  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer 
 } from 'recharts';
 import { Link } from 'react-router-dom';
 
+// Mock data for the dashboard
 const MOCK_AGENTS = [
   { id: 'a1', name: 'John Doe', status: 'on-call', statusTime: 125, currentCall: { caller: '+1 555-123-4567', duration: 125 } },
   { id: 'a2', name: 'Jane Smith', status: 'ready', statusTime: 300, currentCall: null },
@@ -53,6 +54,7 @@ const MOCK_QUEUES = [
   { id: 'q4', name: 'Sales', callsWaiting: 2, availableAgents: 0, longestWaitTime: 230 },
 ];
 
+// Mock chart data for real-time metrics
 const MOCK_CALL_VOLUME_DATA = [
   { hour: '9AM', calls: 12 },
   { hour: '10AM', calls: 19 },
@@ -80,14 +82,7 @@ const MOCK_AGENT_STATUS_DATA = [
   { name: 'Wrap-up', value: 1 },
 ];
 
-const CHART_COLORS = {
-  ready: '#10B981',
-  onCall: '#3B82F6',
-  notReady: '#F59E0B',
-  wrapUp: '#8B5CF6',
-  sla: '#3B82F6',
-  target: '#D1D5DB'
-};
+const COLORS = ['#4ade80', '#f87171', '#facc15', '#9ca3af'];
 
 const SupervisorDashboard = () => {
   const { toast } = useToast();
@@ -96,22 +91,24 @@ const SupervisorDashboard = () => {
   const [showMonitorDialog, setShowMonitorDialog] = useState(false);
   const [monitoringAgent, setMonitoringAgent] = useState<any>(null);
   const [monitorMode, setMonitorMode] = useState<'listen' | 'whisper' | 'barge'>('listen');
-  const [refreshKey, setRefreshKey] = useState(0);
-
+  const [refreshKey, setRefreshKey] = useState(0); // For simulating data refresh
+  
+  // Filter agents based on search
   const filteredAgents = MOCK_AGENTS.filter(agent => 
     agent.name.toLowerCase().includes(searchAgent.toLowerCase())
   );
-
+  
+  // Filter queues based on selection
   const filteredQueues = selectedQueue 
     ? MOCK_QUEUES.filter(queue => queue.id === selectedQueue) 
     : MOCK_QUEUES;
-
+  
   const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
   };
-
+  
   const handleRefreshData = () => {
     setRefreshKey(prev => prev + 1);
     toast({
@@ -119,13 +116,13 @@ const SupervisorDashboard = () => {
       description: "Real-time data has been updated",
     });
   };
-
+  
   const startMonitoring = (agent: any, mode: 'listen' | 'whisper' | 'barge') => {
     setMonitoringAgent(agent);
     setMonitorMode(mode);
     setShowMonitorDialog(true);
   };
-
+  
   const stopMonitoring = () => {
     toast({
       title: "Monitoring ended",
@@ -134,7 +131,8 @@ const SupervisorDashboard = () => {
     setShowMonitorDialog(false);
     setMonitoringAgent(null);
   };
-
+  
+  // Get status color for badge
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'ready':
@@ -176,6 +174,7 @@ const SupervisorDashboard = () => {
         </div>
       }
     >
+      {/* Real-time metrics cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <Card>
           <CardHeader className="pb-2">
@@ -235,6 +234,7 @@ const SupervisorDashboard = () => {
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-6">
+        {/* Agent monitoring panel */}
         <div className="col-span-1 xl:col-span-2">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
@@ -347,6 +347,7 @@ const SupervisorDashboard = () => {
           </Card>
         </div>
         
+        {/* Agent status breakdown */}
         <div>
           <Card className="h-full">
             <CardHeader>
@@ -354,7 +355,7 @@ const SupervisorDashboard = () => {
               <CardDescription>Current distribution of agent statuses</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="h-[250px]">
+              <div className="h-[250px] flex items-center justify-center">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
@@ -363,37 +364,17 @@ const SupervisorDashboard = () => {
                       cy="50%"
                       innerRadius={60}
                       outerRadius={80}
-                      paddingAngle={2}
+                      fill="#8884d8"
+                      paddingAngle={5}
                       dataKey="value"
-                      label={({ name, value, percent }) => `${name}: ${value} (${(percent * 100).toFixed(0)}%)`}
-                      labelLine={false}
+                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
                     >
                       {MOCK_AGENT_STATUS_DATA.map((entry, index) => (
-                        <Cell 
-                          key={`cell-${index}`} 
-                          fill={
-                            entry.name === 'Ready' ? CHART_COLORS.ready :
-                            entry.name === 'On Call' ? CHART_COLORS.onCall :
-                            entry.name === 'Not Ready' ? CHART_COLORS.notReady :
-                            CHART_COLORS.wrapUp
-                          }
-                        />
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
                     </Pie>
-                    <Tooltip 
-                      formatter={(value, name) => [`${value} agents`, name]}
-                      contentStyle={{
-                        backgroundColor: 'white',
-                        border: '1px solid #e2e8f0',
-                        borderRadius: '6px',
-                        padding: '8px'
-                      }}
-                    />
-                    <Legend 
-                      verticalAlign="bottom" 
-                      height={36}
-                      formatter={(value) => <span className="text-sm">{value}</span>}
-                    />
+                    <Tooltip />
+                    <Legend />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
@@ -402,7 +383,9 @@ const SupervisorDashboard = () => {
         </div>
       </div>
 
+      {/* Queue status and performance charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Queue status panel */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
@@ -472,89 +455,55 @@ const SupervisorDashboard = () => {
           </CardContent>
         </Card>
         
+        {/* Charts panel */}
         <Card>
           <CardHeader>
             <CardTitle>Today's Call Volume</CardTitle>
-            <CardDescription>Hourly call distribution and SLA performance</CardDescription>
+            <CardDescription>Hourly call distribution</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={MOCK_CALL_VOLUME_DATA}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                  <XAxis 
-                    dataKey="hour" 
-                    tick={{ fontSize: 12 }}
-                  />
-                  <YAxis 
-                    yAxisId="left"
-                    tick={{ fontSize: 12 }}
-                    label={{ 
-                      value: 'Call Volume', 
-                      angle: -90, 
-                      position: 'insideLeft',
-                      style: { fontSize: '12px' }
-                    }}
-                  />
-                  <YAxis 
-                    yAxisId="right" 
-                    orientation="right"
-                    domain={[0, 100]}
-                    tick={{ fontSize: 12 }}
-                    label={{ 
-                      value: 'SLA %', 
-                      angle: 90, 
-                      position: 'insideRight',
-                      style: { fontSize: '12px' }
-                    }}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: 'white',
-                      border: '1px solid #e2e8f0',
-                      borderRadius: '6px',
-                      padding: '8px'
-                    }}
-                  />
-                  <Legend 
-                    verticalAlign="top" 
-                    height={36}
-                    formatter={(value) => <span className="text-sm">{value}</span>}
-                  />
-                  <Bar 
-                    dataKey="calls" 
-                    name="Call Volume" 
-                    fill={CHART_COLORS.onCall}
-                    yAxisId="left"
-                    radius={[4, 4, 0, 0]}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="sla"
-                    name="SLA %"
-                    stroke={CHART_COLORS.sla}
-                    yAxisId="right"
-                    strokeWidth={2}
-                    dot={{ fill: CHART_COLORS.sla }}
-                  />
-                  <ReferenceLine 
-                    y={90} 
-                    yAxisId="right"
-                    stroke={CHART_COLORS.target}
-                    strokeDasharray="3 3"
-                    label={{ 
-                      value: 'Target SLA (90%)', 
-                      position: 'insideBottomRight',
-                      style: { fontSize: '10px' }
-                    }}
-                  />
-                </ComposedChart>
+                <BarChart data={MOCK_CALL_VOLUME_DATA}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="hour" />
+                  <YAxis />
+                  <Tooltip />
+                  <Legend />
+                  <Bar dataKey="calls" fill="#6366f1" name="Calls" />
+                </BarChart>
               </ResponsiveContainer>
+            </div>
+            
+            <Separator className="my-4" />
+            
+            <div>
+              <h3 className="text-lg font-medium mb-2">SLA Performance</h3>
+              <div className="h-[200px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={MOCK_SLA_DATA}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="hour" />
+                    <YAxis domain={[80, 100]} />
+                    <Tooltip />
+                    <Legend />
+                    <Line 
+                      type="monotone" 
+                      dataKey="sla" 
+                      stroke="#8b5cf6" 
+                      name="SLA %" 
+                      strokeWidth={2} 
+                    />
+                    <CartesianGrid stroke="#ccc" />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
             </div>
           </CardContent>
         </Card>
       </div>
       
+      {/* Call monitoring dialog */}
       <Dialog open={showMonitorDialog && !!monitoringAgent} onOpenChange={(open) => {
         if (!open) stopMonitoring();
       }}>
