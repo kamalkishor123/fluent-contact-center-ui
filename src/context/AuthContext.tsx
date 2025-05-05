@@ -2,6 +2,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+// Make sure we use the same role type as in UserManagement.tsx
 type UserRole = 'agent' | 'supervisor' | 'admin' | null;
 
 interface User {

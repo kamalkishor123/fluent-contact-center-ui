@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { PageLayout } from '@/components/layout/PageLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,8 +15,19 @@ import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
-// Mock user data
-const users = [
+// Type definitions for our user data - ensure we use the specific union type for role
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: 'agent' | 'supervisor' | 'admin';
+  department: string;
+  status: 'active' | 'inactive';
+  lastActive: string;
+}
+
+// Mock user data - ensure all roles are properly typed
+const users: User[] = [
   { 
     id: '1', 
     name: 'John Doe', 
@@ -76,18 +86,7 @@ const formatDate = (dateString: string) => {
   }).format(date);
 };
 
-// Type definitions for our user data
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  role: 'agent' | 'supervisor' | 'admin';
-  department: string;
-  status: 'active' | 'inactive';
-  lastActive: string;
-}
-
-// Schema for user form validation
+// Schema for user form validation - ensure role is properly typed
 const userFormSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters" }),
   email: z.string().email({ message: "Please enter a valid email" }),
@@ -130,6 +129,7 @@ const UserManagement = () => {
   const handleAddUser = (data: UserFormValues) => {
     // Generate a unique ID (in a real app this would come from the backend)
     const newId = (userList.length + 1).toString();
+    // Ensure the role is typed correctly as a union of string literals
     const newUser: User = {
       id: newId,
       name: data.name,
@@ -170,7 +170,14 @@ const UserManagement = () => {
     
     const updatedUsers = userList.map(user => {
       if (user.id === currentUser.id) {
-        return { ...user, ...data };
+        return { 
+          ...user, 
+          name: data.name,
+          email: data.email,
+          role: data.role, 
+          department: data.department,
+          status: data.status
+        };
       }
       return user;
     });
@@ -185,12 +192,12 @@ const UserManagement = () => {
     });
   };
 
-  const handleToggleUserStatus = (userId: string, currentStatus: string) => {
+  const handleToggleUserStatus = (userId: string, currentStatus: 'active' | 'inactive') => {
     const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
     
     const updatedUsers = userList.map(user => {
       if (user.id === userId) {
-        return { ...user, status: newStatus as 'active' | 'inactive' };
+        return { ...user, status: newStatus };
       }
       return user;
     });
