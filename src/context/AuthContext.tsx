@@ -1,14 +1,12 @@
-
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { UserRole } from '@/types/user';
 
-// Make sure we use the same role type as in UserManagement.tsx
-type UserRole = 'agent' | 'supervisor' | 'admin' | null;
-
+// For AuthContext, we need to define our own User interface since we use 'null' for role
 interface User {
   id: string;
   name: string;
-  role: UserRole;
+  role: UserRole | null;
   agentId?: string;
   status?: 'ready' | 'not-ready' | 'wrap-up' | 'on-call';
 }
