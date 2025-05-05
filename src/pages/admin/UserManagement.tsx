@@ -1,14 +1,20 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { PageLayout } from '@/components/layout/PageLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { PlusCircle, Search, Filter, MoreVertical, Edit, Trash2, Lock, UnlockKeyhole } from 'lucide-react';
+import { PlusCircle, Search, Filter, MoreVertical, Edit, Trash2, Lock, UnlockKeyhole, UserPlus } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
 // Mock user data
 const users = [
@@ -70,36 +76,158 @@ const formatDate = (dateString: string) => {
   }).format(date);
 };
 
+// Type definitions for our user data
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: 'agent' | 'supervisor' | 'admin';
+  department: string;
+  status: 'active' | 'inactive';
+  lastActive: string;
+}
+
+// Schema for user form validation
+const userFormSchema = z.object({
+  name: z.string().min(2, { message: "Name must be at least 2 characters" }),
+  email: z.string().email({ message: "Please enter a valid email" }),
+  role: z.enum(['agent', 'supervisor', 'admin']),
+  department: z.string().min(2, { message: "Department must be at least 2 characters" }),
+  status: z.enum(['active', 'inactive']).default('active'),
+});
+
+type UserFormValues = z.infer<typeof userFormSchema>;
+
 const UserManagement = () => {
   const { toast } = useToast();
-  const [searchQuery, setSearchQuery] = React.useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [userList, setUserList] = useState<User[]>(users);
+  
+  // Dialog state management
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  
+  // Form setup
+  const form = useForm<UserFormValues>({
+    resolver: zodResolver(userFormSchema),
+    defaultValues: {
+      name: "",
+      email: "",
+      role: "agent",
+      department: "Support",
+      status: "active",
+    },
+  });
 
-  const filteredUsers = users.filter(user => 
+  const filteredUsers = userList.filter(user => 
     user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
     user.department.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const handleEditUser = (userId: string) => {
+  const handleAddUser = (data: UserFormValues) => {
+    // Generate a unique ID (in a real app this would come from the backend)
+    const newId = (userList.length + 1).toString();
+    const newUser: User = {
+      id: newId,
+      name: data.name,
+      email: data.email,
+      role: data.role,
+      department: data.department,
+      status: data.status,
+      lastActive: new Date().toISOString()
+    };
+
+    setUserList([...userList, newUser]);
+    setAddDialogOpen(false);
+    form.reset();
+    
     toast({
-      title: "Edit User",
-      description: `Editing user with ID: ${userId}`,
+      title: "User Added",
+      description: `${data.name} has been added successfully`,
     });
   };
 
-  const handleDeleteUser = (userId: string) => {
+  const handleEditUser = (userId: string) => {
+    const user = userList.find(u => u.id === userId);
+    if (user) {
+      setCurrentUser(user);
+      form.reset({
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        department: user.department,
+        status: user.status,
+      });
+      setEditDialogOpen(true);
+    }
+  };
+
+  const handleUpdateUser = (data: UserFormValues) => {
+    if (!currentUser) return;
+    
+    const updatedUsers = userList.map(user => {
+      if (user.id === currentUser.id) {
+        return { ...user, ...data };
+      }
+      return user;
+    });
+
+    setUserList(updatedUsers);
+    setEditDialogOpen(false);
+    setCurrentUser(null);
+    
     toast({
-      title: "Delete User",
-      description: `Deleting user with ID: ${userId}`,
+      title: "User Updated",
+      description: `${data.name} has been updated successfully`,
     });
   };
 
   const handleToggleUserStatus = (userId: string, currentStatus: string) => {
     const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
+    
+    const updatedUsers = userList.map(user => {
+      if (user.id === userId) {
+        return { ...user, status: newStatus as 'active' | 'inactive' };
+      }
+      return user;
+    });
+
+    setUserList(updatedUsers);
+    
     toast({
       title: "User Status Updated",
-      description: `User ${userId} status changed to ${newStatus}`,
+      description: `User status changed to ${newStatus}`,
     });
+  };
+
+  const handleDeleteConfirm = (userId: string) => {
+    const user = userList.find(u => u.id === userId);
+    if (user) {
+      setCurrentUser(user);
+      setDeleteDialogOpen(true);
+    }
+  };
+
+  const handleDeleteUser = () => {
+    if (!currentUser) return;
+    
+    const updatedUsers = userList.filter(user => user.id !== currentUser.id);
+    setUserList(updatedUsers);
+    setDeleteDialogOpen(false);
+    setCurrentUser(null);
+    
+    toast({
+      title: "User Deleted",
+      description: `${currentUser.name} has been deleted`,
+    });
+  };
+
+  const openAddDialog = () => {
+    form.reset();
+    setAddDialogOpen(true);
   };
 
   return (
@@ -125,8 +253,8 @@ const UserManagement = () => {
             <Filter className="mr-2 h-4 w-4" />
             Filter
           </Button>
-          <Button>
-            <PlusCircle className="mr-2 h-4 w-4" />
+          <Button onClick={openAddDialog}>
+            <UserPlus className="mr-2 h-4 w-4" />
             Add User
           </Button>
         </div>
@@ -184,7 +312,7 @@ const UserManagement = () => {
                           </DropdownMenuItem>
                           <DropdownMenuItem 
                             className="text-destructive focus:text-destructive"
-                            onClick={() => handleDeleteUser(user.id)}
+                            onClick={() => handleDeleteConfirm(user.id)}
                           >
                             <Trash2 className="mr-2 h-4 w-4" /> Delete
                           </DropdownMenuItem>
@@ -198,6 +326,211 @@ const UserManagement = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Add User Dialog */}
+      <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Add New User</DialogTitle>
+            <DialogDescription>
+              Enter the details for the new user. Click save when you're done.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(handleAddUser)} className="space-y-4 py-2">
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Full Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="John Doe" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl>
+                      <Input type="email" placeholder="john.doe@example.com" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="role"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Role</FormLabel>
+                    <FormControl>
+                      <select 
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        {...field}
+                      >
+                        <option value="agent">Agent</option>
+                        <option value="supervisor">Supervisor</option>
+                        <option value="admin">Admin</option>
+                      </select>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="department"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Department</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Support" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <DialogFooter>
+                <Button type="submit">Save User</Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit User Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Edit User</DialogTitle>
+            <DialogDescription>
+              Update the user details. Click save when you're done.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(handleUpdateUser)} className="space-y-4 py-2">
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Full Name</FormLabel>
+                    <FormControl>
+                      <Input {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl>
+                      <Input type="email" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="role"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Role</FormLabel>
+                    <FormControl>
+                      <select 
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        {...field}
+                      >
+                        <option value="agent">Agent</option>
+                        <option value="supervisor">Supervisor</option>
+                        <option value="admin">Admin</option>
+                      </select>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="department"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Department</FormLabel>
+                    <FormControl>
+                      <Input {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="status"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Status</FormLabel>
+                    <FormControl>
+                      <select 
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        {...field}
+                      >
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                      </select>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <DialogFooter>
+                <Button type="submit">Save Changes</Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the user
+              {currentUser && <strong> {currentUser.name}</strong>} and all associated data.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteUser} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </PageLayout>
   );
 };
