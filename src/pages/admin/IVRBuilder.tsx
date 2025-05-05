@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { PageLayout } from '@/components/layout/PageLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
@@ -14,11 +13,17 @@ import {
   Copy,
   Play,
   Phone,
-  Share2
+  Share2,
+  Eye
 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
+import AddIVRDialog from '@/components/admin/AddIVRDialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { formatDate } from '@/utils/dateUtils';
+import { z } from 'zod';
 
 // Mock IVR data
 const ivrFlows = [
@@ -111,6 +116,11 @@ const IVRBuilder = () => {
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = React.useState('');
   const [activeTab, setActiveTab] = React.useState('ivr-flows');
+  const [openAddDialog, setOpenAddDialog] = React.useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
+  const [ivrToDelete, setIvrToDelete] = React.useState<string | null>(null);
+  const [testDialogOpen, setTestDialogOpen] = React.useState(false);
+  const [currentIvr, setCurrentIvr] = React.useState<typeof ivrFlows[0] | null>(null);
 
   const filteredIVRs = ivrFlows.filter(ivr => 
     ivr.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -130,10 +140,19 @@ const IVRBuilder = () => {
   };
 
   const handleDeleteIVR = (ivrId: string) => {
-    toast({
-      title: "Delete IVR Flow",
-      description: `Deleting IVR flow: ${ivrId}`,
-    });
+    setIvrToDelete(ivrId);
+    setDeleteDialogOpen(true);
+  };
+  
+  const confirmDeleteIVR = () => {
+    if (ivrToDelete) {
+      toast({
+        title: "Delete IVR Flow",
+        description: `Deleting IVR flow: ${ivrToDelete}`,
+      });
+      setIvrToDelete(null);
+      setDeleteDialogOpen(false);
+    }
   };
   
   const handleDuplicateIVR = (ivrId: string) => {
@@ -144,10 +163,11 @@ const IVRBuilder = () => {
   };
   
   const handleTestIVR = (ivrId: string) => {
-    toast({
-      title: "Test IVR Flow",
-      description: `Opening test dialog for IVR flow: ${ivrId}`,
-    });
+    const ivr = ivrFlows.find(i => i.id === ivrId);
+    if (ivr) {
+      setCurrentIvr(ivr);
+      setTestDialogOpen(true);
+    }
   };
 
   const handleUseTemplate = (templateId: string) => {
@@ -156,6 +176,19 @@ const IVRBuilder = () => {
       description: `Creating new IVR flow from template: ${templateId}`,
     });
   };
+
+  const handleAddIVR = (values: z.infer<typeof ivrFormSchema>) => {
+    toast({
+      title: "IVR Created",
+      description: `New IVR flow "${values.name}" has been created`,
+    });
+  };
+
+  // Schema for IVR form
+  const ivrFormSchema = z.object({
+    name: z.string().min(2),
+    description: z.string().min(5),
+  });
 
   return (
     <PageLayout 
@@ -176,7 +209,7 @@ const IVRBuilder = () => {
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-          <Button>
+          <Button onClick={() => setOpenAddDialog(true)}>
             <PlusCircle className="mr-2 h-4 w-4" />
             New IVR Flow
           </Button>
@@ -313,10 +346,70 @@ const IVRBuilder = () => {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Add IVR Dialog */}
+      <AddIVRDialog 
+        open={openAddDialog}
+        onOpenChange={setOpenAddDialog}
+        onAddIVR={handleAddIVR}
+      />
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the
+              selected IVR flow and all associated data.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteIVR} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Test IVR Dialog */}
+      <Dialog open={testDialogOpen} onOpenChange={setTestDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Test IVR Flow</DialogTitle>
+            <DialogDescription>
+              {currentIvr && `Testing "${currentIvr.name}" IVR flow in simulation mode.`}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="flex flex-col gap-4 py-4">
+            <div className="flex items-center justify-center p-8 bg-muted rounded-md">
+              <Phone className="h-12 w-12 text-muted-foreground" />
+            </div>
+            <p className="text-center text-sm text-muted-foreground">
+              Press "Start Test" to begin simulating this IVR flow
+            </p>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setTestDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={() => {
+              toast({
+                title: "Test Started",
+                description: "IVR test simulation has started",
+              });
+              setTestDialogOpen(false);
+            }}>
+              Start Test
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </PageLayout>
   );
 };
-
-const Eye = Trash2; // Using Trash2 as a placeholder for Eye icon
 
 export default IVRBuilder;

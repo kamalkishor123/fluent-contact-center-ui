@@ -10,6 +10,11 @@ import { PlusCircle, Search, MoreVertical, Edit, Trash2, Play, Pause } from 'luc
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
+import AddQueueDialog from '@/components/admin/AddQueueDialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetFooter } from '@/components/ui/sheet';
+import { Label } from '@/components/ui/label';
+import { z } from 'zod';
 
 // Mock queue data
 const queues = [
@@ -63,23 +68,38 @@ const queues = [
 const QueueManagement = () => {
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = React.useState('');
+  const [openAddDialog, setOpenAddDialog] = React.useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
+  const [queueToDelete, setQueueToDelete] = React.useState<string | null>(null);
+  const [editSheetOpen, setEditSheetOpen] = React.useState(false);
+  const [currentQueue, setCurrentQueue] = React.useState<typeof queues[0] | null>(null);
 
   const filteredQueues = queues.filter(queue => 
     queue.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const handleEditQueue = (queueId: string) => {
-    toast({
-      title: "Edit Queue",
-      description: `Editing queue with ID: ${queueId}`,
-    });
+    const queue = queues.find(q => q.id === queueId);
+    if (queue) {
+      setCurrentQueue(queue);
+      setEditSheetOpen(true);
+    }
   };
 
   const handleDeleteQueue = (queueId: string) => {
-    toast({
-      title: "Delete Queue",
-      description: `Deleting queue with ID: ${queueId}`,
-    });
+    setQueueToDelete(queueId);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDeleteQueue = () => {
+    if (queueToDelete) {
+      toast({
+        title: "Queue Deleted",
+        description: `Queue with ID: ${queueToDelete} has been deleted`,
+      });
+      setQueueToDelete(null);
+      setDeleteDialogOpen(false);
+    }
   };
 
   const handleToggleQueueStatus = (queueId: string, currentStatus: string) => {
@@ -90,11 +110,24 @@ const QueueManagement = () => {
     });
   };
 
+  const handleAddQueue = (values: z.infer<typeof queueFormSchema>) => {
+    toast({
+      title: "Queue Created",
+      description: `New queue "${values.name}" has been created with ${values.agents} agents`,
+    });
+  };
+
   const getSLAColor = (slaLevel: number) => {
     if (slaLevel >= 90) return 'bg-green-500';
     if (slaLevel >= 80) return 'bg-yellow-500';
     return 'bg-red-500';
   };
+
+  // Schema for queue form
+  const queueFormSchema = z.object({
+    name: z.string().min(2),
+    agents: z.coerce.number().min(1),
+  });
 
   return (
     <PageLayout 
@@ -115,7 +148,7 @@ const QueueManagement = () => {
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-          <Button>
+          <Button onClick={() => setOpenAddDialog(true)}>
             <PlusCircle className="mr-2 h-4 w-4" />
             New Queue
           </Button>
@@ -199,6 +232,84 @@ const QueueManagement = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Add Queue Dialog */}
+      <AddQueueDialog 
+        open={openAddDialog}
+        onOpenChange={setOpenAddDialog}
+        onAddQueue={handleAddQueue}
+      />
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the
+              selected queue and all associated data.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteQueue} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Edit Queue Sheet */}
+      <Sheet open={editSheetOpen} onOpenChange={setEditSheetOpen}>
+        <SheetContent>
+          <SheetHeader>
+            <SheetTitle>Edit Queue</SheetTitle>
+            <SheetDescription>
+              Update queue settings and configuration
+            </SheetDescription>
+          </SheetHeader>
+          
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="name" className="text-right">
+                Name
+              </Label>
+              <Input
+                id="name"
+                value={currentQueue?.name || ''}
+                className="col-span-3"
+                onChange={() => {}}
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="agents" className="text-right">
+                Agents
+              </Label>
+              <Input
+                id="agents"
+                value={currentQueue?.agents || 0}
+                type="number"
+                className="col-span-3"
+                onChange={() => {}}
+              />
+            </div>
+          </div>
+          
+          <SheetFooter>
+            <Button 
+              onClick={() => {
+                toast({
+                  title: "Queue Updated",
+                  description: "Queue settings have been updated successfully",
+                });
+                setEditSheetOpen(false);
+              }}
+            >
+              Save changes
+            </Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
     </PageLayout>
   );
 };

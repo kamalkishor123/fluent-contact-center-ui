@@ -10,6 +10,9 @@ import { PlusCircle, Search, MoreVertical, Edit, Trash2, Eye, ArrowRightLeft } f
 import { Switch } from '@/components/ui/switch';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
+import AddRuleDialog from '@/components/admin/AddRuleDialog';
+import { z } from 'zod';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
 // Mock ACD rules data
 const acdRules = [
@@ -71,6 +74,9 @@ const priorityVariants: Record<string, "default" | "destructive" | "outline" | "
 const ACDRules = () => {
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = React.useState('');
+  const [openAddDialog, setOpenAddDialog] = React.useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
+  const [ruleToDelete, setRuleToDelete] = React.useState<string | null>(null);
 
   const filteredRules = acdRules.filter(rule => 
     rule.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -101,11 +107,37 @@ const ACDRules = () => {
   };
 
   const handleDeleteRule = (ruleId: string) => {
+    setRuleToDelete(ruleId);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDeleteRule = () => {
+    if (ruleToDelete) {
+      toast({
+        title: "Rule Deleted",
+        description: `ACD rule ${ruleToDelete} has been deleted`,
+      });
+      setRuleToDelete(null);
+      setDeleteDialogOpen(false);
+    }
+  };
+
+  // Handler for adding a new rule
+  const handleAddRule = (values: z.infer<typeof ruleFormSchema>) => {
     toast({
-      title: "Delete Rule",
-      description: `Deleting ACD rule with ID: ${ruleId}`,
+      title: "Rule Created",
+      description: `New ACD rule "${values.name}" has been created`,
     });
   };
+
+  // Schema for rule form
+  const ruleFormSchema = z.object({
+    name: z.string().min(2),
+    description: z.string().min(5),
+    condition: z.string().min(5),
+    actions: z.string().min(5),
+    priority: z.enum(["Critical", "High", "Medium", "Low"]),
+  });
 
   return (
     <PageLayout 
@@ -126,7 +158,7 @@ const ACDRules = () => {
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-          <Button>
+          <Button onClick={() => setOpenAddDialog(true)}>
             <PlusCircle className="mr-2 h-4 w-4" />
             Create Rule
           </Button>
@@ -204,6 +236,32 @@ const ACDRules = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Add Rule Dialog */}
+      <AddRuleDialog 
+        open={openAddDialog}
+        onOpenChange={setOpenAddDialog}
+        onAddRule={handleAddRule}
+      />
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the
+              selected ACD rule and all associated data.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteRule} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </PageLayout>
   );
 };
