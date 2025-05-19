@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { PageLayout } from '@/components/layout/PageLayout';
 import { useAuth } from '@/context/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -27,10 +27,14 @@ import {
   ClipboardList,
   MailOpen,
   User,
-  Search
+  Search,
+  Calendar,
+  ExternalLink
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
 
 // Mock data for the dashboard
 const MOCK_QUEUES = [
@@ -57,6 +61,122 @@ const MOCK_DIRECTORY = [
   { id: 'd5', name: 'Robert Wilson', department: 'HR', extension: '105' },
 ];
 
+// Mock patient data
+const MOCK_PATIENT_DATA = {
+  name: 'Martha Johnson',
+  patientId: 'MRN-78912345',
+  dob: '05/12/1968',
+  contactNumber: '+1 555-876-5432',
+  lastAppointment: {
+    date: '2025-04-15',
+    type: 'Annual Physical'
+  },
+  nextAppointment: {
+    date: '2025-05-20',
+    type: 'Follow-up Consultation'
+  },
+  alerts: [
+    { type: 'Language', value: 'Spanish Preferred' },
+    { type: 'Balance', value: '$125.00 Outstanding' }
+  ],
+  lastInteraction: 'Called about prescription refill on 04/10/2025'
+};
+
+// Mock interaction history
+const MOCK_INTERACTION_HISTORY = [
+  {
+    id: 'int1',
+    type: 'call',
+    date: '2025-04-10T14:30:00',
+    description: 'Called about prescription refill',
+    notes: 'Patient requested refill for hypertension medication. Transferred to pharmacy.',
+    agent: 'Alex Rivera'
+  },
+  {
+    id: 'int2',
+    type: 'appointment',
+    date: '2025-04-15T09:00:00',
+    description: 'Annual Physical Examination',
+    notes: 'Completed with Dr. Peterson. Follow-up scheduled for May.',
+    provider: 'Dr. Sarah Peterson'
+  },
+  {
+    id: 'int3',
+    type: 'message',
+    date: '2025-04-02T11:15:00',
+    description: 'Portal Message',
+    notes: 'Requested information about lab results. Response sent same day.',
+    agent: 'Taylor Wong'
+  },
+  {
+    id: 'int4',
+    type: 'call',
+    date: '2025-03-22T15:45:00',
+    description: 'Billing Question',
+    notes: 'Patient had questions about recent invoice. Explained charges and payment options.',
+    agent: 'Jordan Smith'
+  },
+  {
+    id: 'int5',
+    type: 'appointment',
+    date: '2025-03-15T13:30:00',
+    description: 'Specialist Consultation',
+    notes: 'Referred to cardiology for further evaluation.',
+    provider: 'Dr. Michael Chen'
+  }
+];
+
+// Healthcare-specific disposition codes
+const DISPOSITION_CODES = [
+  { value: 'appointment-scheduled', label: 'Appointment Scheduled' },
+  { value: 'appointment-modified', label: 'Appointment Modified' },
+  { value: 'appointment-cancelled', label: 'Appointment Cancelled' },
+  { value: 'inquiry-resolved', label: 'Inquiry Resolved' },
+  { value: 'prescription-refill', label: 'Prescription Refill Request' },
+  { value: 'billing-question', label: 'Billing Question' },
+  { value: 'insurance-verification', label: 'Insurance Verification' },
+  { value: 'transferred-to-clinical', label: 'Transferred to Clinical Staff' },
+  { value: 'transferred-to-billing', label: 'Transferred to Billing Department' },
+  { value: 'message-taken', label: 'Message Taken' },
+  { value: 'follow-up-required', label: 'Follow-up Required' },
+  { value: 'other', label: 'Other' }
+];
+
+// Call scripts based on call type
+const CALL_SCRIPTS = {
+  'general': [
+    "Thank the caller for contacting healthcare support.",
+    "Verify patient identity with name and date of birth.",
+    "Ask how you can assist them today.",
+    "Resolve their inquiry or route to appropriate department.",
+    "Summarize the call and next steps before ending."
+  ],
+  'appointment': [
+    "Thank the caller for contacting appointment scheduling.",
+    "Verify patient identity with name and date of birth.",
+    "Ask about the reason for their appointment request.",
+    "Check provider availability in the scheduling system.",
+    "Confirm appointment details and provide any preparation instructions.",
+    "Verify contact information for appointment reminders."
+  ],
+  'billing': [
+    "Thank the caller for contacting the billing department.",
+    "Verify patient identity with name and date of birth.",
+    "Ask for specific invoice or billing question.",
+    "Explain charges and payment options clearly.",
+    "Document any billing disputes or questions that need follow-up.",
+    "Confirm the patient understands the resolution or next steps."
+  ],
+  'clinical': [
+    "Thank the caller for contacting clinical support.",
+    "Verify patient identity with name and date of birth.",
+    "Note this is not for medical emergencies (direct to 911 if needed).",
+    "Document symptoms or concerns clearly and thoroughly.",
+    "Follow triage protocols for routing clinical questions.",
+    "Provide clear next steps and timeline expectations."
+  ]
+};
+
 const AgentDashboard = () => {
   const { user, updateStatus } = useAuth();
   const { toast } = useToast();
@@ -77,12 +197,23 @@ const AgentDashboard = () => {
   const [dialpadValue, setDialpadValue] = useState('');
   const [showVoicemailDialog, setShowVoicemailDialog] = useState(false);
   const [currentVoicemail, setCurrentVoicemail] = useState<any>(null);
+  const [disposition, setDisposition] = useState<string>('');
+  const [callType, setCallType] = useState('general');
+  const [isPatientInfoLoading, setIsPatientInfoLoading] = useState(false);
+  const [patientData, setPatientData] = useState<typeof MOCK_PATIENT_DATA | null>(null);
+  const [historyFilter, setHistoryFilter] = useState('all');
+  const [showFullHistory, setShowFullHistory] = useState(false);
   
   // Filter directory based on search term
   const filteredDirectory = MOCK_DIRECTORY.filter(entry => 
     entry.name.toLowerCase().includes(searchDirectory.toLowerCase()) || 
     entry.department.toLowerCase().includes(searchDirectory.toLowerCase()) ||
     entry.extension.includes(searchDirectory)
+  );
+  
+  // Filter interaction history
+  const filteredHistory = MOCK_INTERACTION_HISTORY.filter(item => 
+    historyFilter === 'all' || item.type === historyFilter
   );
 
   const handleChangeStatus = (status: 'ready' | 'not-ready' | 'wrap-up') => {
@@ -114,6 +245,25 @@ const AgentDashboard = () => {
     return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
   };
   
+  const loadPatientInfo = () => {
+    setIsPatientInfoLoading(true);
+    // Simulate API call to fetch patient data
+    setTimeout(() => {
+      setPatientData(MOCK_PATIENT_DATA);
+      setIsPatientInfoLoading(false);
+      // Set call type based on queue for correct scripts
+      if (currentQueue?.toLowerCase().includes('billing')) {
+        setCallType('billing');
+      } else if (currentQueue?.toLowerCase().includes('appointment')) {
+        setCallType('appointment');
+      } else if (currentQueue?.toLowerCase().includes('clinical')) {
+        setCallType('clinical');
+      } else {
+        setCallType('general');
+      }
+    }, 1200); // Simulate network delay
+  };
+  
   const handleIncomingCall = () => {
     // Simulate incoming call
     const randomCaller = `+1 555-${Math.floor(100 + Math.random() * 900)}-${Math.floor(1000 + Math.random() * 9000)}`;
@@ -143,6 +293,9 @@ const AgentDashboard = () => {
     }, 1000);
     
     setCallTimer(timer);
+    
+    // Load patient information
+    loadPatientInfo();
   };
   
   const hangupCall = () => {
@@ -166,6 +319,7 @@ const AgentDashboard = () => {
     setIsMuted(false);
     setCurrentCaller(null);
     setCurrentQueue(null);
+    setPatientData(null);
     
     // Set to wrap-up
     updateStatus('wrap-up');
@@ -173,7 +327,7 @@ const AgentDashboard = () => {
     
     toast({
       title: "Call ended",
-      description: "Please complete any post-call work",
+      description: "Please complete disposition and wrap-up work",
     });
   };
   
@@ -243,6 +397,28 @@ const AgentDashboard = () => {
     
     hangupCall();
   };
+
+  const completeDisposition = () => {
+    if (!disposition) {
+      toast({
+        title: "Disposition required",
+        description: "Please select a disposition code before returning to Ready",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    const selectedCode = DISPOSITION_CODES.find(code => code.value === disposition);
+    
+    toast({
+      title: "Wrap-up completed",
+      description: `Call dispositioned as: ${selectedCode?.label || disposition}`,
+    });
+    
+    // Reset disposition and return to ready state
+    setDisposition('');
+    handleChangeStatus('ready');
+  };
   
   const dialNumber = () => {
     if (dialpadValue.length === 0) return;
@@ -273,6 +449,34 @@ const AgentDashboard = () => {
     setCurrentVoicemail(voicemail);
     setShowVoicemailDialog(true);
   };
+  
+  const viewFullHistory = () => {
+    setShowFullHistory(true);
+  };
+  
+  const closeFullHistory = () => {
+    setShowFullHistory(false);
+  };
+  
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return new Intl.DateTimeFormat('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    }).format(date);
+  };
+  
+  const formatDateTime = (dateString: string) => {
+    const date = new Date(dateString);
+    return new Intl.DateTimeFormat('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    }).format(date);
+  };
 
   // Status indicator component
   const StatusIndicator = ({ status }: { status: string }) => {
@@ -299,6 +503,42 @@ const AgentDashboard = () => {
         {status === 'on-call' && (
           <div className="absolute inset-0 w-3 h-3 rounded-full bg-cc-agent-busy animate-pulse-ring"></div>
         )}
+      </div>
+    );
+  };
+  
+  // Render interaction history item
+  const renderHistoryItem = (item: typeof MOCK_INTERACTION_HISTORY[0]) => {
+    const getIconForType = () => {
+      switch (item.type) {
+        case 'call':
+          return <Phone className="h-4 w-4" />;
+        case 'appointment':
+          return <Calendar className="h-4 w-4" />;
+        case 'message':
+          return <MailOpen className="h-4 w-4" />;
+        default:
+          return <ClipboardList className="h-4 w-4" />;
+      }
+    };
+    
+    return (
+      <div key={item.id} className="flex gap-3 p-3 border-b last:border-0 hover:bg-muted/50">
+        <div className="bg-muted rounded-full p-2 h-fit">
+          {getIconForType()}
+        </div>
+        <div className="flex-1">
+          <div className="flex justify-between">
+            <span className="font-medium">{item.description}</span>
+            <span className="text-xs text-muted-foreground">{formatDateTime(item.date)}</span>
+          </div>
+          <p className="text-sm text-muted-foreground mt-1">{item.notes}</p>
+          {(item.agent || item.provider) && (
+            <p className="text-xs text-muted-foreground mt-1">
+              {item.agent ? `Agent: ${item.agent}` : `Provider: ${item.provider}`}
+            </p>
+          )}
+        </div>
       </div>
     );
   };
@@ -397,7 +637,7 @@ const AgentDashboard = () => {
                     </Button>
                   </div>
                   
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
                     <Button 
                       variant="outline" 
                       className="flex items-center gap-2"
@@ -419,20 +659,97 @@ const AgentDashboard = () => {
                     </Button>
                   </div>
                   
-                  {/* Caller information and scripting would go here */}
+                  {/* Patient Information */}
                   <div className="mt-6 border-t pt-4">
-                    <h3 className="text-lg font-medium mb-3">Caller Information</h3>
-                    <div className="bg-muted p-4 rounded">
-                      <p>Loading patient information...</p>
-                    </div>
+                    <h3 className="text-lg font-medium flex items-center justify-between">
+                      <span>Patient Information</span>
+                      {patientData && (
+                        <Button 
+                          variant="link" 
+                          size="sm" 
+                          className="text-sm"
+                          onClick={viewFullHistory}
+                        >
+                          View Full History <ExternalLink className="ml-1 h-3 w-3" />
+                        </Button>
+                      )}
+                    </h3>
+                    
+                    {isPatientInfoLoading ? (
+                      <div className="bg-muted p-4 rounded flex items-center justify-center">
+                        <p>Loading patient information...</p>
+                      </div>
+                    ) : patientData ? (
+                      <div className="bg-muted p-4 rounded">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                          <div>
+                            <p className="text-sm text-muted-foreground">Patient Name</p>
+                            <p className="font-medium">{patientData.name}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-muted-foreground">Patient ID</p>
+                            <p className="font-medium">{patientData.patientId}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-muted-foreground">Date of Birth</p>
+                            <p className="font-medium">{patientData.dob}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-muted-foreground">Contact Number</p>
+                            <p className="font-medium">{patientData.contactNumber}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-muted-foreground">Last Appointment</p>
+                            <p className="font-medium">
+                              {formatDate(patientData.lastAppointment.date)} ({patientData.lastAppointment.type})
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-muted-foreground">Next Appointment</p>
+                            <p className="font-medium">
+                              {formatDate(patientData.nextAppointment.date)} ({patientData.nextAppointment.type})
+                            </p>
+                          </div>
+                        </div>
+                        
+                        <div className="mt-3">
+                          <p className="text-sm text-muted-foreground">Alerts/Flags:</p>
+                          <div className="flex gap-2 mt-1 flex-wrap">
+                            {patientData.alerts.map((alert, index) => (
+                              <Badge key={index} variant="outline" className="bg-amber-50">
+                                {alert.type}: {alert.value}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                        
+                        <div className="mt-3">
+                          <p className="text-sm text-muted-foreground">Last Interaction:</p>
+                          <p className="text-sm">{patientData.lastInteraction}</p>
+                        </div>
+                        
+                        <div className="mt-4 flex gap-2">
+                          <Button size="sm" variant="outline">
+                            Open Patient Record
+                          </Button>
+                          <Button size="sm" variant="outline">
+                            Create New Case
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="bg-muted p-4 rounded">
+                        <p>No patient information available for this call.</p>
+                      </div>
+                    )}
                   </div>
                   
                   <div className="mt-6 border-t pt-4">
                     <h3 className="text-lg font-medium mb-3">Call Script</h3>
                     <div className="bg-muted p-4 rounded">
-                      <p>Thank the caller for contacting support.</p>
-                      <p>Verify their identity with name and date of birth.</p>
-                      <p>Ask how you can assist them today.</p>
+                      {CALL_SCRIPTS[callType as keyof typeof CALL_SCRIPTS].map((line, index) => (
+                        <p key={index} className="mb-2 last:mb-0">{line}</p>
+                      ))}
                     </div>
                   </div>
                 </div>
@@ -477,6 +794,7 @@ const AgentDashboard = () => {
           <Tabs defaultValue="call" value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="w-full mb-4">
               <TabsTrigger value="call" className="flex-1">Call Information</TabsTrigger>
+              <TabsTrigger value="patientHistory" className="flex-1">Patient History</TabsTrigger>
               <TabsTrigger value="missedCalls" className="flex-1">Missed Calls</TabsTrigger>
               <TabsTrigger value="voicemail" className="flex-1">Voicemail</TabsTrigger>
               <TabsTrigger value="directory" className="flex-1">Directory</TabsTrigger>
@@ -489,18 +807,67 @@ const AgentDashboard = () => {
                   <CardDescription>Select a category for this call</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <Select disabled={!isOnCall}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select disposition" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="inquiry">General Inquiry</SelectItem>
-                      <SelectItem value="technical">Technical Issue</SelectItem>
-                      <SelectItem value="billing">Billing Question</SelectItem>
-                      <SelectItem value="complaint">Complaint</SelectItem>
-                      <SelectItem value="other">Other</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <div className="space-y-4">
+                    <Select 
+                      disabled={!isOnCall && agentStatus !== 'wrap-up'} 
+                      value={disposition} 
+                      onValueChange={setDisposition}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select disposition" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {DISPOSITION_CODES.map(code => (
+                          <SelectItem key={code.value} value={code.value}>{code.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    
+                    {agentStatus === 'wrap-up' && (
+                      <div className="flex justify-end">
+                        <Button onClick={completeDisposition}>
+                          Complete Wrap-up
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+            
+            <TabsContent value="patientHistory">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Patient Interaction History</CardTitle>
+                  <CardDescription>View timeline of patient interactions</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {patientData ? (
+                    <div className="space-y-4">
+                      <div className="flex gap-2">
+                        <Select value={historyFilter} onValueChange={setHistoryFilter}>
+                          <SelectTrigger className="w-[180px]">
+                            <SelectValue placeholder="Filter by type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All interactions</SelectItem>
+                            <SelectItem value="call">Calls</SelectItem>
+                            <SelectItem value="appointment">Appointments</SelectItem>
+                            <SelectItem value="message">Messages</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      <ScrollArea className="h-[300px] rounded border p-1">
+                        {filteredHistory.map(item => renderHistoryItem(item))}
+                      </ScrollArea>
+                    </div>
+                  ) : (
+                    <div className="py-10 text-center text-muted-foreground">
+                      <p>No patient information available for this call</p>
+                      <p className="text-sm mt-2">Patient information appears here when a call is active</p>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>
@@ -809,6 +1176,83 @@ const AgentDashboard = () => {
                 </Button>
               </div>
             </div>
+          </DialogContent>
+        )}
+      </Dialog>
+      
+      {/* Full Patient History Dialog */}
+      <Dialog open={showFullHistory} onOpenChange={closeFullHistory}>
+        {patientData && (
+          <DialogContent className="sm:max-w-[800px]">
+            <DialogHeader>
+              <DialogTitle>Patient History - {patientData.name}</DialogTitle>
+              <DialogDescription>
+                Complete interaction history and patient information
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex flex-col space-y-4">
+              <div className="p-4 border rounded-md">
+                <h3 className="text-lg font-medium mb-3">Patient Information</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Patient ID</p>
+                    <p className="font-medium">{patientData.patientId}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Date of Birth</p>
+                    <p className="font-medium">{patientData.dob}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Contact Number</p>
+                    <p className="font-medium">{patientData.contactNumber}</p>
+                  </div>
+                </div>
+                <div className="mt-2">
+                  <p className="text-sm text-muted-foreground">Alerts/Flags:</p>
+                  <div className="flex gap-2 mt-1 flex-wrap">
+                    {patientData.alerts.map((alert, index) => (
+                      <Badge key={index} variant="outline" className="bg-amber-50">
+                        {alert.type}: {alert.value}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              
+              <div>
+                <h3 className="text-lg font-medium mb-2">Interaction Timeline</h3>
+                <div className="border rounded-md overflow-hidden">
+                  <div className="flex border-b p-2 bg-muted/50">
+                    <div className="font-medium flex-1">
+                      <Select value={historyFilter} onValueChange={setHistoryFilter}>
+                        <SelectTrigger className="w-[180px]">
+                          <SelectValue placeholder="Filter by type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All interactions</SelectItem>
+                          <SelectItem value="call">Calls</SelectItem>
+                          <SelectItem value="appointment">Appointments</SelectItem>
+                          <SelectItem value="message">Messages</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      Showing {filteredHistory.length} interactions
+                    </div>
+                  </div>
+                  <ScrollArea className="h-[400px]">
+                    <div className="p-1">
+                      {filteredHistory.map(item => renderHistoryItem(item))}
+                    </div>
+                  </ScrollArea>
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button onClick={closeFullHistory}>
+                Close
+              </Button>
+            </DialogFooter>
           </DialogContent>
         )}
       </Dialog>
