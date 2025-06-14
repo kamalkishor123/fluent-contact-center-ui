@@ -28,7 +28,8 @@ import {
   User,
   Search,
   Calendar,
-  ExternalLink
+  ExternalLink,
+  PhoneIncoming
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
@@ -37,6 +38,8 @@ import { Separator } from '@/components/ui/separator';
 import { PatientInfoCard } from '@/components/agent/PatientInfoCard';
 import { CaseManagementPanel } from '@/components/agent/CaseManagementPanel';
 import { PatientSearchPanel } from '@/components/agent/PatientSearchPanel';
+import { InboundCallHandler } from '@/components/agent/InboundCallHandler';
+import { CallQueueMonitor } from '@/components/agent/CallQueueMonitor';
 
 // Mock data for the dashboard
 const MOCK_QUEUES = [
@@ -101,6 +104,58 @@ const ENHANCED_MOCK_PATIENT_DATA = {
     assignedTo: 'Alex Rivera'
   }
 };
+
+// Enhanced mock queue data with detailed statistics
+const ENHANCED_MOCK_QUEUES = [
+  { 
+    id: 'q1', 
+    name: 'General Inquiries', 
+    waitingCalls: 3,
+    averageWaitTime: 85,
+    longestWaitTime: 180,
+    agentsAvailable: 2,
+    agentsOnCall: 5,
+    callsHandledToday: 47,
+    slaPerformance: 92,
+    trend: 'up' as const
+  },
+  { 
+    id: 'q2', 
+    name: 'Emergency Line', 
+    waitingCalls: 1,
+    averageWaitTime: 15,
+    longestWaitTime: 15,
+    agentsAvailable: 3,
+    agentsOnCall: 1,
+    callsHandledToday: 8,
+    slaPerformance: 98,
+    trend: 'stable' as const
+  },
+  { 
+    id: 'q3', 
+    name: 'Appointment Scheduling', 
+    waitingCalls: 5,
+    averageWaitTime: 125,
+    longestWaitTime: 300,
+    agentsAvailable: 1,
+    agentsOnCall: 3,
+    callsHandledToday: 73,
+    slaPerformance: 78,
+    trend: 'down' as const
+  },
+  { 
+    id: 'q4', 
+    name: 'Billing Department', 
+    waitingCalls: 0,
+    averageWaitTime: 45,
+    longestWaitTime: 0,
+    agentsAvailable: 2,
+    agentsOnCall: 1,
+    callsHandledToday: 31,
+    slaPerformance: 95,
+    trend: 'up' as const
+  }
+];
 
 // Mock interaction history
 const MOCK_INTERACTION_HISTORY = [
@@ -285,25 +340,31 @@ const AgentDashboard = () => {
     }, 1200);
   };
   
-  const handleIncomingCall = () => {
-    // Simulate incoming call
-    const randomCaller = `+1 555-${Math.floor(100 + Math.random() * 900)}-${Math.floor(1000 + Math.random() * 9000)}`;
-    const randomQueue = MOCK_QUEUES[Math.floor(Math.random() * MOCK_QUEUES.length)].name;
-    
-    setCurrentCaller(randomCaller);
-    setCurrentQueue(randomQueue);
+  // Enhanced incoming call handler
+  const handleIncomingCall = (incomingCall: any) => {
+    setCurrentCaller(incomingCall.callerNumber);
+    setCurrentQueue(incomingCall.queue);
     
     toast({
       title: "Incoming Call",
-      description: `From: ${randomCaller} via ${randomQueue}`,
+      description: `From: ${incomingCall.callerNumber} via ${incomingCall.queue}`,
+    });
+  };
+  
+  const handleAnswerInboundCall = (call: any) => {
+    setCurrentCaller(call.callerNumber);
+    setCurrentQueue(call.queue);
+    answerCall();
+  };
+  
+  const handleRejectInboundCall = (callId: string) => {
+    toast({
+      title: "Call rejected",
+      description: "Call has been sent to voicemail or callback queue",
     });
   };
   
   const answerCall = () => {
-    if (!currentCaller) {
-      handleIncomingCall(); // For demo purposes
-    }
-    
     setIsOnCall(true);
     updateStatus('on-call');
     setAgentStatus('on-call');
@@ -632,13 +693,29 @@ const AgentDashboard = () => {
         </div>
       }
     >
+      {/* Inbound Call Handler Component */}
+      <InboundCallHandler
+        agentStatus={agentStatus}
+        onAnswerCall={handleAnswerInboundCall}
+        onRejectCall={handleRejectInboundCall}
+        isOnCall={isOnCall}
+      />
+
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         {/* Main Call Control and Info Section */}
         <div className="col-span-1 xl:col-span-2">
           <Card className="mb-6">
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
-                <div>Current Call</div>
+                <div className="flex items-center gap-2">
+                  Current Call
+                  {agentStatus === 'ready' && !isOnCall && (
+                    <Badge variant="outline" className="text-green-600 border-green-200">
+                      <PhoneIncoming className="h-3 w-3 mr-1" />
+                      Ready for calls
+                    </Badge>
+                  )}
+                </div>
                 {isOnCall && (
                   <div className="flex items-center text-sm">
                     <span className="text-cc-agent-busy mr-2">●</span>
@@ -652,7 +729,7 @@ const AgentDashboard = () => {
               <CardDescription>
                 {isOnCall ? 
                   `On call with ${currentCaller} via ${currentQueue}` : 
-                  "No active calls"
+                  agentStatus === 'ready' ? "Waiting for incoming calls..." : "No active calls"
                 }
               </CardDescription>
             </CardHeader>
@@ -1009,28 +1086,21 @@ const AgentDashboard = () => {
           </Tabs>
         </div>
         
-        {/* Sidebar for Queue Status */}
+        {/* Enhanced Sidebar for Queue Status */}
         <div>
           <Card className="mb-6">
             <CardHeader>
-              <CardTitle>Queue Status</CardTitle>
-              <CardDescription>Calls waiting in your queues</CardDescription>
+              <CardTitle>Real-time Queue Monitor</CardTitle>
+              <CardDescription>Live queue statistics and performance</CardDescription>
             </CardHeader>
             <CardContent>
-              {MOCK_QUEUES.map((queue) => (
-                <div key={queue.id} className="flex justify-between items-center py-2 border-b last:border-0">
-                  <div>{queue.name}</div>
-                  <Badge variant={queue.waitingCalls > 0 ? "default" : "outline"}>
-                    {queue.waitingCalls} {queue.waitingCalls === 1 ? 'call' : 'calls'}
-                  </Badge>
-                </div>
-              ))}
+              <CallQueueMonitor queues={ENHANCED_MOCK_QUEUES} />
             </CardContent>
           </Card>
           
           <Card>
             <CardHeader>
-              <CardTitle>Daily Stats</CardTitle>
+              <CardTitle>My Performance Today</CardTitle>
               <CardDescription>Your call statistics for today</CardDescription>
             </CardHeader>
             <CardContent>
@@ -1044,12 +1114,21 @@ const AgentDashboard = () => {
                   <div className="font-medium">3:45</div>
                 </div>
                 <div className="flex justify-between">
-                  <div className="text-muted-foreground">Longest Call</div>
-                  <div className="font-medium">8:12</div>
+                  <div className="text-muted-foreground">Inbound Calls Answered</div>
+                  <div className="font-medium">10</div>
+                </div>
+                <div className="flex justify-between">
+                  <div className="text-muted-foreground">Calls Transferred</div>
+                  <div className="font-medium">3</div>
                 </div>
                 <div className="flex justify-between">
                   <div className="text-muted-foreground">Missed Calls</div>
-                  <div className="font-medium">2</div>
+                  <div className="font-medium">1</div>
+                </div>
+                <Separator />
+                <div className="flex justify-between">
+                  <div className="text-muted-foreground">SLA Performance</div>
+                  <div className="font-medium text-green-600">94%</div>
                 </div>
               </div>
             </CardContent>
