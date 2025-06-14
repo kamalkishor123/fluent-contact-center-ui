@@ -40,6 +40,7 @@ import { CaseManagementPanel } from '@/components/agent/CaseManagementPanel';
 import { PatientSearchPanel } from '@/components/agent/PatientSearchPanel';
 import { InboundCallHandler } from '@/components/agent/InboundCallHandler';
 import { CallQueueMonitor } from '@/components/agent/CallQueueMonitor';
+import { InternalMessaging } from '@/components/agent/InternalMessaging';
 
 // Mock data for the dashboard
 const MOCK_QUEUES = [
@@ -668,6 +669,10 @@ const AgentDashboard = () => {
       allowedRoles={['agent']}
       rightContent={
         <div className="flex items-center gap-4">
+          <InternalMessaging 
+            currentUserId={user?.id || 'current-user'}
+            currentUserName={user?.name || 'Current User'}
+          />
           <div className="flex items-center gap-2">
             <StatusIndicator status={agentStatus} />
             <Select 
