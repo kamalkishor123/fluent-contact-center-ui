@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { PageLayout } from '@/components/layout/PageLayout';
 import { useAuth } from '@/context/AuthContext';
@@ -35,6 +34,9 @@ import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import { PatientInfoCard } from '@/components/agent/PatientInfoCard';
+import { CaseManagementPanel } from '@/components/agent/CaseManagementPanel';
+import { PatientSearchPanel } from '@/components/agent/PatientSearchPanel';
 
 // Mock data for the dashboard
 const MOCK_QUEUES = [
@@ -61,25 +63,43 @@ const MOCK_DIRECTORY = [
   { id: 'd5', name: 'Robert Wilson', department: 'HR', extension: '105' },
 ];
 
-// Mock patient data
-const MOCK_PATIENT_DATA = {
+// Enhanced mock patient data with additional fields
+const ENHANCED_MOCK_PATIENT_DATA = {
   name: 'Martha Johnson',
   patientId: 'MRN-78912345',
   dob: '05/12/1968',
   contactNumber: '+1 555-876-5432',
+  email: 'martha.johnson@email.com',
+  address: '123 Main St, Springfield, IL 62701',
+  emergencyContact: 'John Johnson (Spouse) - +1 555-876-5433',
+  primaryProvider: 'Dr. Sarah Peterson',
+  insuranceProvider: 'Blue Cross Blue Shield',
+  policyNumber: 'BCBS-123456789',
   lastAppointment: {
     date: '2025-04-15',
-    type: 'Annual Physical'
+    type: 'Annual Physical',
+    provider: 'Dr. Sarah Peterson'
   },
   nextAppointment: {
     date: '2025-05-20',
-    type: 'Follow-up Consultation'
+    type: 'Follow-up Consultation',
+    provider: 'Dr. Sarah Peterson'
   },
   alerts: [
-    { type: 'Language', value: 'Spanish Preferred' },
-    { type: 'Balance', value: '$125.00 Outstanding' }
+    { type: 'Language', value: 'Spanish Preferred', priority: 'medium' as const },
+    { type: 'Balance', value: '$125.00 Outstanding', priority: 'high' as const }
   ],
-  lastInteraction: 'Called about prescription refill on 04/10/2025'
+  medicalAlerts: [
+    { type: 'Allergy', description: 'Penicillin - severe reaction', severity: 'critical' as const },
+    { type: 'Condition', description: 'Hypertension - controlled', severity: 'warning' as const }
+  ],
+  lastInteraction: 'Called about prescription refill on 04/10/2025',
+  activeCase: {
+    id: 'CASE-001',
+    type: 'Billing Inquiry',
+    status: 'in-progress',
+    assignedTo: 'Alex Rivera'
+  }
 };
 
 // Mock interaction history
@@ -200,9 +220,10 @@ const AgentDashboard = () => {
   const [disposition, setDisposition] = useState<string>('');
   const [callType, setCallType] = useState('general');
   const [isPatientInfoLoading, setIsPatientInfoLoading] = useState(false);
-  const [patientData, setPatientData] = useState<typeof MOCK_PATIENT_DATA | null>(null);
+  const [patientData, setPatientData] = useState<typeof ENHANCED_MOCK_PATIENT_DATA | null>(null);
   const [historyFilter, setHistoryFilter] = useState('all');
   const [showFullHistory, setShowFullHistory] = useState(false);
+  const [selectedPatient, setSelectedPatient] = useState<any>(null);
   
   // Filter directory based on search term
   const filteredDirectory = MOCK_DIRECTORY.filter(entry => 
@@ -247,9 +268,9 @@ const AgentDashboard = () => {
   
   const loadPatientInfo = () => {
     setIsPatientInfoLoading(true);
-    // Simulate API call to fetch patient data
+    // Simulate API call to fetch enhanced patient data
     setTimeout(() => {
-      setPatientData(MOCK_PATIENT_DATA);
+      setPatientData(ENHANCED_MOCK_PATIENT_DATA);
       setIsPatientInfoLoading(false);
       // Set call type based on queue for correct scripts
       if (currentQueue?.toLowerCase().includes('billing')) {
@@ -261,7 +282,7 @@ const AgentDashboard = () => {
       } else {
         setCallType('general');
       }
-    }, 1200); // Simulate network delay
+    }, 1200);
   };
   
   const handleIncomingCall = () => {
@@ -458,6 +479,42 @@ const AgentDashboard = () => {
     setShowFullHistory(false);
   };
   
+  const handlePatientSelect = (patient: any) => {
+    setSelectedPatient(patient);
+    setPatientData({
+      ...ENHANCED_MOCK_PATIENT_DATA,
+      name: patient.name,
+      patientId: patient.id,
+      contactNumber: patient.contactNumber,
+      email: patient.email
+    });
+    toast({
+      title: "Patient selected",
+      description: `Loaded information for ${patient.name}`,
+    });
+  };
+
+  const handleViewFullRecord = () => {
+    toast({
+      title: "Opening patient record",
+      description: "Launching electronic health record system...",
+    });
+  };
+
+  const handleCreateCase = () => {
+    toast({
+      title: "Creating new case",
+      description: "Opening case creation form...",
+    });
+  };
+
+  const handleViewActiveCase = () => {
+    toast({
+      title: "Opening active case",
+      description: "Loading case details...",
+    });
+  };
+  
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return new Intl.DateTimeFormat('en-US', {
@@ -575,9 +632,9 @@ const AgentDashboard = () => {
         </div>
       }
     >
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         {/* Main Call Control and Info Section */}
-        <div className="col-span-1 lg:col-span-2">
+        <div className="col-span-1 xl:col-span-2">
           <Card className="mb-6">
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
@@ -659,20 +716,10 @@ const AgentDashboard = () => {
                     </Button>
                   </div>
                   
-                  {/* Patient Information */}
+                  {/* Enhanced Patient Information */}
                   <div className="mt-6 border-t pt-4">
-                    <h3 className="text-lg font-medium flex items-center justify-between">
+                    <h3 className="text-lg font-medium flex items-center justify-between mb-4">
                       <span>Patient Information</span>
-                      {patientData && (
-                        <Button 
-                          variant="link" 
-                          size="sm" 
-                          className="text-sm"
-                          onClick={viewFullHistory}
-                        >
-                          View Full History <ExternalLink className="ml-1 h-3 w-3" />
-                        </Button>
-                      )}
                     </h3>
                     
                     {isPatientInfoLoading ? (
@@ -680,63 +727,12 @@ const AgentDashboard = () => {
                         <p>Loading patient information...</p>
                       </div>
                     ) : patientData ? (
-                      <div className="bg-muted p-4 rounded">
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                          <div>
-                            <p className="text-sm text-muted-foreground">Patient Name</p>
-                            <p className="font-medium">{patientData.name}</p>
-                          </div>
-                          <div>
-                            <p className="text-sm text-muted-foreground">Patient ID</p>
-                            <p className="font-medium">{patientData.patientId}</p>
-                          </div>
-                          <div>
-                            <p className="text-sm text-muted-foreground">Date of Birth</p>
-                            <p className="font-medium">{patientData.dob}</p>
-                          </div>
-                          <div>
-                            <p className="text-sm text-muted-foreground">Contact Number</p>
-                            <p className="font-medium">{patientData.contactNumber}</p>
-                          </div>
-                          <div>
-                            <p className="text-sm text-muted-foreground">Last Appointment</p>
-                            <p className="font-medium">
-                              {formatDate(patientData.lastAppointment.date)} ({patientData.lastAppointment.type})
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-sm text-muted-foreground">Next Appointment</p>
-                            <p className="font-medium">
-                              {formatDate(patientData.nextAppointment.date)} ({patientData.nextAppointment.type})
-                            </p>
-                          </div>
-                        </div>
-                        
-                        <div className="mt-3">
-                          <p className="text-sm text-muted-foreground">Alerts/Flags:</p>
-                          <div className="flex gap-2 mt-1 flex-wrap">
-                            {patientData.alerts.map((alert, index) => (
-                              <Badge key={index} variant="outline" className="bg-amber-50">
-                                {alert.type}: {alert.value}
-                              </Badge>
-                            ))}
-                          </div>
-                        </div>
-                        
-                        <div className="mt-3">
-                          <p className="text-sm text-muted-foreground">Last Interaction:</p>
-                          <p className="text-sm">{patientData.lastInteraction}</p>
-                        </div>
-                        
-                        <div className="mt-4 flex gap-2">
-                          <Button size="sm" variant="outline">
-                            Open Patient Record
-                          </Button>
-                          <Button size="sm" variant="outline">
-                            Create New Case
-                          </Button>
-                        </div>
-                      </div>
+                      <PatientInfoCard
+                        patientData={patientData}
+                        onViewFullRecord={handleViewFullRecord}
+                        onCreateCase={handleCreateCase}
+                        onViewActiveCase={handleViewActiveCase}
+                      />
                     ) : (
                       <div className="bg-muted p-4 rounded">
                         <p>No patient information available for this call.</p>
@@ -790,11 +786,13 @@ const AgentDashboard = () => {
             </CardContent>
           </Card>
           
-          {/* Tabs for additional functionality */}
+          {/* Enhanced Tabs for additional functionality */}
           <Tabs defaultValue="call" value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="w-full mb-4">
               <TabsTrigger value="call" className="flex-1">Call Information</TabsTrigger>
               <TabsTrigger value="patientHistory" className="flex-1">Patient History</TabsTrigger>
+              <TabsTrigger value="caseManagement" className="flex-1">Case Management</TabsTrigger>
+              <TabsTrigger value="patientSearch" className="flex-1">Patient Search</TabsTrigger>
               <TabsTrigger value="missedCalls" className="flex-1">Missed Calls</TabsTrigger>
               <TabsTrigger value="voicemail" className="flex-1">Voicemail</TabsTrigger>
               <TabsTrigger value="directory" className="flex-1">Directory</TabsTrigger>
@@ -870,6 +868,17 @@ const AgentDashboard = () => {
                   )}
                 </CardContent>
               </Card>
+            </TabsContent>
+
+            <TabsContent value="caseManagement">
+              <CaseManagementPanel
+                currentPatientId={patientData?.patientId}
+                currentPatientName={patientData?.name}
+              />
+            </TabsContent>
+
+            <TabsContent value="patientSearch">
+              <PatientSearchPanel onSelectPatient={handlePatientSelect} />
             </TabsContent>
             
             <TabsContent value="missedCalls">
