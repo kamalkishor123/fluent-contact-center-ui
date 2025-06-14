@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -16,7 +15,10 @@ import {
   Circle,
   Search,
   Users,
-  Bell
+  Bell,
+  X,
+  Minimize2,
+  Maximize2
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
@@ -100,6 +102,7 @@ export const InternalMessaging = ({ currentUserId, currentUserName }: InternalMe
   const [searchTerm, setSearchTerm] = useState('');
   const [showMessagingDialog, setShowMessagingDialog] = useState(false);
   const [isUrgent, setIsUrgent] = useState(false);
+  const [isMinimized, setIsMinimized] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Filter agents based on search
@@ -181,13 +184,13 @@ export const InternalMessaging = ({ currentUserId, currentUserName }: InternalMe
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'available':
-        return 'bg-green-500';
+        return 'status-available';
       case 'busy':
-        return 'bg-red-500';
+        return 'status-busy';
       case 'away':
-        return 'bg-yellow-500';
+        return 'status-away';
       case 'offline':
-        return 'bg-gray-400';
+        return 'status-offline';
       default:
         return 'bg-gray-400';
     }
@@ -213,40 +216,64 @@ export const InternalMessaging = ({ currentUserId, currentUserName }: InternalMe
   return (
     <Dialog open={showMessagingDialog} onOpenChange={setShowMessagingDialog}>
       <DialogTrigger asChild>
-        <Button variant="outline" className="relative">
+        <Button variant="outline" className="relative interactive shadow-md hover:shadow-lg">
           <MessageSquare className="mr-2 h-4 w-4" />
-          Messages
+          <span className="hidden sm:inline">Messages</span>
           {unreadCount > 0 && (
-            <Badge className="absolute -top-2 -right-2 h-5 w-5 p-0 flex items-center justify-center bg-red-500">
+            <Badge className="absolute -top-2 -right-2 h-5 w-5 p-0 flex items-center justify-center bg-red-500 animate-pulse">
               {unreadCount}
             </Badge>
           )}
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[900px] h-[600px] p-0">
-        <DialogHeader className="p-6 pb-0">
-          <DialogTitle className="flex items-center gap-2">
-            <MessageSquare className="h-5 w-5" />
-            Internal Messaging
-          </DialogTitle>
+      <DialogContent className={`transition-all duration-300 ${
+        isMinimized ? 'sm:max-w-[400px] h-[200px]' : 'sm:max-w-[1000px] h-[700px]'
+      } p-0 animate-scale-in`}>
+        <DialogHeader className="p-4 pb-0 border-b bg-muted/30">
+          <div className="flex items-center justify-between">
+            <DialogTitle className="flex items-center gap-2 text-responsive-lg">
+              <MessageSquare className="h-5 w-5 text-primary" />
+              Internal Messaging
+            </DialogTitle>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsMinimized(!isMinimized)}
+                className="interactive"
+              >
+                {isMinimized ? <Maximize2 className="h-4 w-4" /> : <Minimize2 className="h-4 w-4" />}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowMessagingDialog(false)}
+                className="interactive"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
         </DialogHeader>
         
-        <div className="flex h-[500px]">
-          {/* Agent List */}
-          <div className="w-1/3 border-r">
-            <div className="p-4">
-              <div className="relative mb-4">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search agents..."
-                  className="pl-8"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
+        {!isMinimized && (
+          <div className="flex h-[600px]">
+            {/* Enhanced Agent List */}
+            <div className="w-full md:w-1/3 border-r bg-muted/20">
+              <div className="p-4 border-b">
+                <div className="relative">
+                  <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search agents..."
+                    className="pl-9 bg-background/50 backdrop-blur-sm"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                </div>
               </div>
               
-              <ScrollArea className="h-[400px]">
-                <div className="space-y-2">
+              <ScrollArea className="h-[500px]">
+                <div className="p-2 space-y-1">
                   {filteredAgents.map((agent) => {
                     const conversation = getConversation(agent.id);
                     const lastMessage = conversation[conversation.length - 1];
@@ -257,17 +284,17 @@ export const InternalMessaging = ({ currentUserId, currentUserName }: InternalMe
                     return (
                       <div
                         key={agent.id}
-                        className={`p-3 rounded-lg cursor-pointer transition-colors ${
+                        className={`p-3 rounded-lg cursor-pointer transition-all duration-200 interactive-subtle ${
                           selectedAgent?.id === agent.id
-                            ? 'bg-primary/10 border border-primary/20'
-                            : 'hover:bg-muted/50'
+                            ? 'bg-primary/10 border border-primary/20 shadow-md'
+                            : 'hover:bg-background/80 hover:shadow-sm'
                         }`}
                         onClick={() => handleAgentSelect(agent)}
                       >
-                        <div className="flex items-center justify-between mb-1">
-                          <div className="flex items-center gap-2">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-3">
                             <div className="relative">
-                              <div className="bg-muted rounded-full p-1">
+                              <div className="bg-muted rounded-full p-2 shadow-sm">
                                 <User className="h-4 w-4" />
                               </div>
                               <div className={`absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 border-white ${getStatusColor(agent.status)}`}></div>
@@ -278,7 +305,7 @@ export const InternalMessaging = ({ currentUserId, currentUserName }: InternalMe
                             </div>
                           </div>
                           {unreadInConversation > 0 && (
-                            <Badge variant="destructive" className="h-5 w-5 p-0 flex items-center justify-center text-xs">
+                            <Badge variant="destructive" className="h-5 w-5 p-0 flex items-center justify-center text-xs animate-pulse">
                               {unreadInConversation}
                             </Badge>
                           )}
@@ -294,109 +321,133 @@ export const InternalMessaging = ({ currentUserId, currentUserName }: InternalMe
                 </div>
               </ScrollArea>
             </div>
-          </div>
-          
-          {/* Conversation */}
-          <div className="flex-1 flex flex-col">
-            {selectedAgent ? (
-              <>
-                {/* Conversation Header */}
-                <div className="p-4 border-b">
-                  <div className="flex items-center gap-2">
-                    <div className="relative">
-                      <div className="bg-muted rounded-full p-2">
-                        <User className="h-5 w-5" />
-                      </div>
-                      <div className={`absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 border-white ${getStatusColor(selectedAgent.status)}`}></div>
-                    </div>
-                    <div>
-                      <h3 className="font-medium">{selectedAgent.name}</h3>
-                      <p className="text-sm text-muted-foreground">
-                        {selectedAgent.agentId} • {selectedAgent.department} • {selectedAgent.status}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-                
-                {/* Messages */}
-                <ScrollArea className="flex-1 p-4">
-                  <div className="space-y-4">
-                    {getConversation(selectedAgent.id).map((message) => (
-                      <div
-                        key={message.id}
-                        className={`flex ${message.senderId === 'current' ? 'justify-end' : 'justify-start'}`}
-                      >
-                        <div
-                          className={`max-w-[70%] p-3 rounded-lg ${
-                            message.senderId === 'current'
-                              ? 'bg-primary text-primary-foreground'
-                              : 'bg-muted'
-                          }`}
-                        >
-                          <div className="flex items-center gap-2 mb-1">
-                            {message.urgent && (
-                              <Badge variant="destructive" className="h-4 text-xs px-1">
-                                <Bell className="h-3 w-3 mr-1" />
-                                Urgent
-                              </Badge>
-                            )}
-                            <span className="text-xs opacity-70">
-                              {formatTime(message.timestamp)}
-                            </span>
-                          </div>
-                          <p className="text-sm">{message.content}</p>
+            
+            {/* Enhanced Conversation */}
+            <div className="flex-1 flex flex-col bg-background/50">
+              {selectedAgent ? (
+                <>
+                  {/* Conversation Header */}
+                  <div className="p-4 border-b bg-muted/30">
+                    <div className="flex items-center gap-3">
+                      <div className="relative">
+                        <div className="bg-muted rounded-full p-2 shadow-sm">
+                          <User className="h-5 w-5" />
                         </div>
+                        <div className={`absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 border-white ${getStatusColor(selectedAgent.status)}`}></div>
                       </div>
-                    ))}
-                    <div ref={messagesEndRef} />
+                      <div>
+                        <h3 className="font-medium text-responsive-base">{selectedAgent.name}</h3>
+                        <p className="text-sm text-muted-foreground">
+                          {selectedAgent.agentId} • {selectedAgent.department} • 
+                          <span className="capitalize ml-1">{selectedAgent.status}</span>
+                        </p>
+                      </div>
+                    </div>
                   </div>
-                </ScrollArea>
-                
-                {/* Message Input */}
-                <div className="p-4 border-t">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Button
-                      variant={isUrgent ? "destructive" : "outline"}
-                      size="sm"
-                      onClick={() => setIsUrgent(!isUrgent)}
-                    >
-                      <Bell className="h-3 w-3 mr-1" />
-                      {isUrgent ? 'Urgent' : 'Normal'}
-                    </Button>
+                  
+                  {/* Enhanced Messages */}
+                  <ScrollArea className="flex-1 p-4 bg-gradient-to-b from-background/30 to-muted/10">
+                    <div className="space-y-4">
+                      {getConversation(selectedAgent.id).map((message) => (
+                        <div
+                          key={message.id}
+                          className={`flex animate-fade-in ${message.senderId === 'current' ? 'justify-end' : 'justify-start'}`}
+                        >
+                          <div
+                            className={`max-w-[70%] p-3 rounded-lg shadow-sm transition-all duration-200 hover:shadow-md ${
+                              message.senderId === 'current'
+                                ? 'bg-primary text-primary-foreground ml-auto'
+                                : 'bg-card border'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2 mb-1">
+                              {message.urgent && (
+                                <Badge variant="destructive" className="h-4 text-xs px-2 animate-pulse">
+                                  <Bell className="h-3 w-3 mr-1" />
+                                  Urgent
+                                </Badge>
+                              )}
+                              <span className={`text-xs ${
+                                message.senderId === 'current' ? 'text-primary-foreground/70' : 'text-muted-foreground'
+                              }`}>
+                                {formatTime(message.timestamp)}
+                              </span>
+                            </div>
+                            <p className="text-sm">{message.content}</p>
+                          </div>
+                        </div>
+                      ))}
+                      <div ref={messagesEndRef} />
+                    </div>
+                  </ScrollArea>
+                  
+                  {/* Enhanced Message Input */}
+                  <div className="p-4 border-t bg-muted/20">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Button
+                        variant={isUrgent ? "destructive" : "outline"}
+                        size="sm"
+                        onClick={() => setIsUrgent(!isUrgent)}
+                        className="interactive shadow-sm"
+                      >
+                        <Bell className="h-3 w-3 mr-1" />
+                        {isUrgent ? 'Urgent' : 'Normal'}
+                      </Button>
+                    </div>
+                    <div className="flex gap-3">
+                      <Textarea
+                        placeholder={`Type a message to ${selectedAgent.name}...`}
+                        value={newMessage}
+                        onChange={(e) => setNewMessage(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault();
+                            sendMessage();
+                          }
+                        }}
+                        className="resize-none bg-background/80 backdrop-blur-sm shadow-sm"
+                        rows={2}
+                      />
+                      <Button 
+                        onClick={sendMessage} 
+                        disabled={!newMessage.trim()}
+                        className="btn-primary self-end"
+                      >
+                        <Send className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
-                  <div className="flex gap-2">
-                    <Textarea
-                      placeholder={`Type a message to ${selectedAgent.name}...`}
-                      value={newMessage}
-                      onChange={(e) => setNewMessage(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && !e.shiftKey) {
-                          e.preventDefault();
-                          sendMessage();
-                        }
-                      }}
-                      className="resize-none"
-                      rows={2}
-                    />
-                    <Button onClick={sendMessage} disabled={!newMessage.trim()}>
-                      <Send className="h-4 w-4" />
-                    </Button>
+                </>
+              ) : (
+                <div className="flex-1 flex items-center justify-center animate-fade-in">
+                  <div className="text-center">
+                    <Users className="h-16 w-16 mx-auto mb-4 text-muted-foreground/50" />
+                    <h3 className="text-responsive-lg font-medium mb-2">Select an agent to start messaging</h3>
+                    <p className="text-muted-foreground text-responsive-base">
+                      Choose from the list of available agents to begin a conversation
+                    </p>
                   </div>
                 </div>
-              </>
-            ) : (
-              <div className="flex-1 flex items-center justify-center">
-                <div className="text-center">
-                  <Users className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                  <h3 className="text-lg font-medium mb-2">Select an agent to start messaging</h3>
-                  <p className="text-muted-foreground">
-                    Choose from the list of available agents to begin a conversation
-                  </p>
-                </div>
-              </div>
+              )}
+            </div>
+          </div>
+        )}
+        
+        {isMinimized && (
+          <div className="p-4 flex items-center justify-between animate-fade-in">
+            <div className="flex items-center gap-2">
+              <MessageSquare className="h-4 w-4" />
+              <span className="text-sm font-medium">
+                {selectedAgent ? `Chatting with ${selectedAgent.name}` : 'Internal Messaging'}
+              </span>
+            </div>
+            {unreadCount > 0 && (
+              <Badge variant="destructive" className="animate-pulse">
+                {unreadCount} new
+              </Badge>
             )}
           </div>
-        </div>
+        )}
       </DialogContent>
     </Dialog>
   );
