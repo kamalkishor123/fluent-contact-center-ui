@@ -138,6 +138,54 @@ export const InboundCallHandler = ({
     });
   };
 
+  // Manual test call simulation
+  const simulateTestCall = () => {
+    if (isOnCall || showIncomingDialog) {
+      toast({
+        title: "Cannot simulate call",
+        description: "You are already on a call or have an incoming call",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const testCalls: IncomingCall[] = [
+      {
+        id: `test-call-${Date.now()}`,
+        callerNumber: '+1 555-TEST-123',
+        callerName: 'John Test Patient',
+        queue: 'General Inquiries',
+        waitTime: 25,
+        priority: 'normal',
+        location: 'Test City, TX',
+        callType: 'general',
+        patientId: 'TEST-12345'
+      },
+      {
+        id: `test-call-${Date.now()}`,
+        callerNumber: '+1 555-URGENT-911',
+        callerName: 'Emergency Test Call',
+        queue: 'Emergency Line',
+        waitTime: 5,
+        priority: 'urgent',
+        callType: 'emergency'
+      },
+      {
+        id: `test-call-${Date.now()}`,
+        callerNumber: '+1 555-APPT-456',
+        callerName: 'Mary Appointment',
+        queue: 'Appointment Scheduling',
+        waitTime: 60,
+        priority: 'normal',
+        callType: 'appointment',
+        patientId: 'APPT-67890'
+      }
+    ];
+
+    const randomCall = testCalls[Math.floor(Math.random() * testCalls.length)];
+    handleIncomingCall(randomCall);
+  };
+
   const handleAnswerCall = () => {
     if (!incomingCall) return;
 
@@ -213,6 +261,28 @@ export const InboundCallHandler = ({
 
   return (
     <>
+      {/* Test Call Simulation Button */}
+      {agentStatus === 'ready' && !isOnCall && !showIncomingDialog && (
+        <div className="mb-4">
+          <Card>
+            <CardContent className="pt-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-medium">Test Incoming Call</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Simulate an incoming call with caller ID for testing
+                  </p>
+                </div>
+                <Button onClick={simulateTestCall} variant="outline">
+                  <PhoneIncoming className="mr-2 h-4 w-4" />
+                  Simulate Call
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       {/* Incoming Call Dialog */}
       <Dialog open={showIncomingDialog} onOpenChange={() => {}}>
         <DialogContent className="sm:max-w-[500px]">
